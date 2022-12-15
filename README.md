@@ -1,5 +1,123 @@
-SonarQube Helm Chart
-=================
+# Deploying SonarQube in K8 with external PostgreSQL backend
+
+Refs:
+    + https://github.com/SonarSource/helm-chart-sonarqube/tree/master/charts/sonarqube
+    + https://gatesch.medium.com/deploying-sonarqube-in-k8-with-external-postgresql-backend-aca510712b37
+    + https://medium.com/codex/easy-deploy-sonarqube-on-kubernetes-with-yaml-configuration-27f5adc8de90
+
+
+## Initialize PostgreSQL Backend Database for SQ
+```
+-- Login to PostgreSQL
+export POSTGRES_PASSWORD=postgres
+
+kubectl run postgresql-dev-client --rm --tty -i --restart='Never' --namespace sonarqube --image postgres --env="PGPASSWORD=$POSTGRES_PASSWORD" --command -- psql --host postgresql-dev -U postgres -d postgres -p 5432
+
+-- Create the user and database for sonarqube in postgresql
+psql> CREATE USER sonarUser with password 'sonarpass';
+psql> CREATE DATABASE sonardb with owner sonaruser encoding 'UTF8';
+psql> \l   ## List Databases
+psql> \c sonardb    ## Switch Database
+psql> \dt
+```
+
+## SonarQube Installation
+Deploy our SonarQube in Kubernetes backed by postgreSQL database.
+
+### Update the SonarQube chart
+```
+cd charts/sonarqube
+helm dependency update
+```
+### Edit the “values.yaml” file 
+1 - Enable the ingress and set the entry point URL
+```
+ingress:
+enabled: true
+# Used to create an Ingress record.
+hosts:
+-name: sonarqube.example.loc
+```
+
+2 - Set the CPU resource limit to 2000 millicores (it will considerably reduce the startup time for sonarQube)
+```
+resources:
+limits:
+cpu: 2000m
+memory: 4096M
+requests:
+cpu: 400m
+memory: 2Gi
+```
+
+3 - Increase the values for readiness, liveness and startup probes
+```
+readinessProbe:
+initialDelaySeconds: 300
+periodSeconds: 200
+failureThreshold: 20
+
+livenessProbe:
+initialDelaySeconds: 300
+periodSeconds: 200
+failureThreshold: 20
+
+startupProbe:
+initialDelaySeconds: 120
+periodSeconds: 60
+failureThreshold: 240
+```
+
+4 - Set postgresql enabled to “false” since will be using an external postgreSQL, wneed to provide the postgreSQL server IP and credentials
+```
+postgresql:
+# Enable to deploy the PostgreSQL chart
+enabled: false
+
+postgresqlServer: 192.168.12.41
+
+postgresqlUsername: “sonaruser”
+postgresqlPassword: “sonarPass”
+postgresqlDatabase: “sonardb”
+```
+
+### Create the namespace for sonarqube in Kubernetes and deploy the helm chart
+```
+cd charts/sonarqube
+helm install -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube
+
+# or upgrade
+helm upgrade -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube
+
+kubectl get all -n sonarqube
+```
+
+## Test Installation
+
+```
+export POSTGRES_PASSWORD=sonarPass
+kubectl run postgresql-dev-client --rm --tty -i --restart='Never' --namespace sonarqube --image postgres --env="PGPASSWORD=$POSTGRES_PASSWORD" --command -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
+
+kubectl exec --stdin --tty --namespace sonarqube postgresql-dev-client -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
+
+psql> \l   ## List Databases
+psql> \dt
+```
+
+## Forward Port to localhost
+PS: new admin / P@ssw0rd
+```
+kubectl port-forward -n sonarqube service/sonarqube-sonarqube 9000:9000
+```
+
+
+
+## Delete Installation
+``` 
+helm delete -n sonarqube sonarqube
+```
+
+#
 
 About this Repo
 ----------------
