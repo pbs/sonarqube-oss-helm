@@ -45,8 +45,8 @@ containerSecurityContext:
 # Settings to configure elasticsearch host requirements
 elasticsearch:
   # DEPRECATED: Use initSysctl.enabled instead
-  configureNode: true
-  bootstrapChecks: true
+  configureNode: false
+  bootstrapChecks: false
 
 service:
   type: ClusterIP
@@ -230,7 +230,7 @@ initFs:
     privileged: true
 
 prometheusExporter:
-  enabled: true
+  enabled: false
   # jmx_prometheus_javaagent version to download from Maven Central
   version: "0.16.0"
   # Alternative full download URL for the jmx_prometheus_javaagent.jar (overrides prometheusExporter.version)
@@ -267,7 +267,16 @@ prometheusExporter:
 #    - "https://github.com/SonarSource/sonar-ldap/releases/download/2.2-RC3/sonar-ldap-plugin-2.2.0.601.jar"
 #
 plugins:
-  install: []
+  # install: []
+  install:
+    - https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.12.0/sonarqube-community-branch-plugin-1.12.0.jar
+  lib:
+    - sonarqube-community-branch-plugin-1.12.0.jar
+  jvmOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-${version}.jar/sonarqube-community-branch-plugin-${version}.jar=web"
+  jvmCeOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-${version}.jar/sonarqube-community-branch-plugin-${version}.jar=ce"
+
+  # jvmOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=web"
+  # jvmCeOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=ce"
 
   # For use behind a corporate proxy when downloading plugins
   # httpProxy: ""
@@ -407,9 +416,9 @@ postgresql:
   #
   # The bitnami chart enforces the key to be "postgresql-password". This value is only here for historic purposes
   # existingSecretPasswordKey: "postgresql-password"
-  postgresqlUsername: "sonarUser"
-  postgresqlPassword: "sonarPass"
-  postgresqlDatabase: "sonarDB"
+  postgresqlUsername: "sonaruser"
+  postgresqlPassword: "sonarpass"
+  postgresqlDatabase: "sonardb"
   # Specify the TCP port that PostgreSQL should use
   service:
     port: 5432
@@ -421,7 +430,7 @@ postgresql:
       cpu: 100m
       memory: 200Mi
   persistence:
-    enabled: true
+    enabled: false
     accessMode: ReadWriteOnce
     size: 20Gi
     storageClass:

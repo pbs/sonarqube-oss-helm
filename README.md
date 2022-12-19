@@ -15,6 +15,7 @@ kubectl run postgresql-dev-client --rm --tty -i --restart='Never' --namespace so
 
 -- Create the user and database for sonarqube in postgresql
 psql> CREATE USER sonarUser with password 'sonarpass';
+psql> ALTER USER sonarUser WITH PASSWORD 'sonarpass';
 psql> CREATE DATABASE sonardb with owner sonaruser encoding 'UTF8';
 psql> \l   ## List Databases
 psql> \c sonardb    ## Switch Database
@@ -77,25 +78,24 @@ enabled: false
 postgresqlServer: 192.168.12.41
 
 postgresqlUsername: “sonaruser”
-postgresqlPassword: “sonarPass”
+postgresqlPassword: “sonarpass”
 postgresqlDatabase: “sonardb”
 ```
 
 ### Create the namespace for sonarqube in Kubernetes and deploy the helm chart
 ```
 cd charts/sonarqube
-helm install -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube
+helm install -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
 
 # or upgrade
-helm upgrade -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube
+helm upgrade -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
 
 kubectl get all -n sonarqube
 ```
-
 ## Test Installation
 
 ```
-export POSTGRES_PASSWORD=sonarPass
+export POSTGRES_PASSWORD=sonarpass
 kubectl run postgresql-dev-client --rm --tty -i --restart='Never' --namespace sonarqube --image postgres --env="PGPASSWORD=$POSTGRES_PASSWORD" --command -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
 
 kubectl exec --stdin --tty --namespace sonarqube postgresql-dev-client -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
@@ -104,17 +104,30 @@ psql> \l   ## List Databases
 psql> \dt
 ```
 
-## Forward Port to localhost
+## Patch to NodePort
 PS: new admin / P@ssw0rd
 ```
-kubectl port-forward -n sonarqube service/sonarqube-sonarqube 9000:9000
+kubectl patch svc sonarqube-sonarqube -p '{"spec": {"type": "NodePort"}}' -n sonarqube
+kubectl get all -n sonarqube
 ```
+
+## Check Browser and Plugin
+
+http://esb-kube03-dev.pbs.org:30984
+http://esb-kube03-dev.pbs.org:30984/admin/marketplace?filter=installed
+
+
+## Add SQ Plugin
+Refs: 
+    https://github.com/mc1arke/sonarqube-community-branch-plugin
+    https://medium.com/cloudnesil/making-sonarqube-analysis-of-multiple-git-branches-with-docker-in-community-edition-48aaa768851
 
 
 
 ## Delete Installation
 ``` 
 helm delete -n sonarqube sonarqube
+kubectl delete pvc data-sonarqube-postgresql-0 -n sonarqube
 ```
 
 #
