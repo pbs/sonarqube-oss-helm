@@ -25,9 +25,18 @@ psql> \dt
 ## SonarQube Installation
 Deploy our SonarQube in Kubernetes backed by postgreSQL database.
 
-### Update the SonarQube chart
+### Taints & Tolerations - DO NOT USE THIS YET
+Create a taint to avoid installing other pods 
+```
+kubectl get nodes
+kubectl taint nodes esb-kube03-dev.pbs.org sonarqube=true:NoSchedule
+```
+
+### Get the SonarQube chart
 ```
 cd charts/sonarqube
+helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
+helm repo update
 helm dependency update
 ```
 ### Edit the “values.yaml” file 
@@ -82,15 +91,27 @@ postgresqlPassword: “sonarpass”
 postgresqlDatabase: “sonardb”
 ```
 
+### Add new plugins
+ref: https://github.com/mc1arke/sonarqube-community-branch-plugin
+
 ### Create the namespace for sonarqube in Kubernetes and deploy the helm chart
 ```
 cd charts/sonarqube
-helm install -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
+kubectl create namespace sonarqube
+helm upgrade --install -f pbs_values.yaml -n sonarqube sonarqube sonarqube/sonarqube \
+    --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
 
 # or upgrade
-helm upgrade -f values.yaml -n sonarqube sonarqube sonarqube/sonarqube --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
+helm upgrade -f pbs_values.yaml -n sonarqube sonarqube sonarqube/sonarqube \
+    --set persistence.enabled=true,persistence.existingClaim=data-postgresql-dev-0
 
 kubectl get all -n sonarqube
+
+kubectl describe -n sonarqube pod/sonarqube-sonarqube-0
+
+kubectl logs -n sonarqube pod/sonarqube-sonarqube-0
+
+kubectl exec -n sonarqube sonarqube-sonarqube-0 -it -- //bin/bash
 ```
 ## Test Installation
 
@@ -98,7 +119,10 @@ kubectl get all -n sonarqube
 export POSTGRES_PASSWORD=sonarpass
 kubectl run postgresql-dev-client --rm --tty -i --restart='Never' --namespace sonarqube --image postgres --env="PGPASSWORD=$POSTGRES_PASSWORD" --command -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
 
-kubectl exec --stdin --tty --namespace sonarqube postgresql-dev-client -- psql --host postgresql-dev -U sonaruser -d sonardb -p 5432
+kubectl exec --stdin --tty --namespace sonarqube postgresql-dev-client -- psql --host postgresql-dev-0 -U sonaruser -d sonardb -p 5432
+
+kubectl exec -n sonarqube pod/sonarqube-postgresql-0 -it -- //bin/bash
+> psql -h localhost -U sonaruser --password -p 5432 sonardb
 
 psql> \l   ## List Databases
 psql> \dt
@@ -109,12 +133,13 @@ PS: new admin / P@ssw0rd
 ```
 kubectl patch svc sonarqube-sonarqube -p '{"spec": {"type": "NodePort"}}' -n sonarqube
 kubectl get all -n sonarqube
+kubectl describe -n sonarqube pod/sonarqube-sonarqube-0
 ```
 
 ## Check Browser and Plugin
 
-http://esb-kube03-dev.pbs.org:30984
-http://esb-kube03-dev.pbs.org:30984/admin/marketplace?filter=installed
+http://esb-kube03-dev.pbs.org:32593
+http://esb-kube03-dev.pbs.org:32593/admin/marketplace?filter=installed
 
 
 ## Add SQ Plugin
@@ -127,7 +152,8 @@ Refs:
 ## Delete Installation
 ``` 
 helm delete -n sonarqube sonarqube
-kubectl delete pvc data-sonarqube-postgresql-0 -n sonarqube
+kubectl -n sonarqube get all
+kubectl delete namespace sonarqube
 ```
 
 #

@@ -20,6 +20,8 @@ To install the chart:
 ```bash
 helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
 helm repo update
+helm repo list
+helm search repo sonarqube
 kubectl create namespace sonarqube
 helm upgrade --install -n sonarqube sonarqube sonarqube/sonarqube
 ```

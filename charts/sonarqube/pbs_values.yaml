@@ -1,0 +1,245 @@
+# PBS values for sonarqube.
+
+deploymentType: "StatefulSet"
+replicaCount: 1
+deploymentStrategy: {}
+edition: "community"
+
+image:
+  repository: sonarqube
+  tag: 9.9.0-{{ .Values.edition }}
+  pullPolicy: IfNotPresent
+
+# Set security context for sonarqube pod & container
+securityContext:
+  fsGroup: 1000
+containerSecurityContext:
+  runAsUser: 1000
+
+# Settings to configure elasticsearch host requirements
+elasticsearch:
+  # DEPRECATED: Use initSysctl.enabled instead
+  configureNode: false
+  bootstrapChecks: false
+
+service:
+  type: ClusterIP
+  externalPort: 9000
+  internalPort: 9000
+  labels:
+  annotations: {}
+
+networkPolicy:
+  enabled: false
+
+nginx:
+  enabled: false
+
+ingress:
+  enabled: false
+  # Used to create an Ingress record.
+  hosts:
+    - name: sonarqube.your-org.com
+      path: /
+  annotations: {}
+  tls: []
+  
+route:
+  enabled: false
+  host: ""
+  tls:
+    termination: edge
+  annotations: {}
+
+affinity: {}
+
+tolerations: []
+
+nodeSelector: {}
+
+hostAliases: []
+
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  sonarWebContext: /
+
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  sonarWebContext: /
+
+startupProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 24
+  sonarWebContext: /
+
+initContainers:
+  resources: {}
+
+extraInitContainers: {}
+
+extraContainers: []
+
+caCerts:
+  enabled: false
+  image: adoptopenjdk/openjdk11:alpine
+  secret: your-secret
+
+initSysctl:
+  enabled: true
+  vmMaxMapCount: 524288
+  fsFileMax: 131072
+  nofile: 131072
+  nproc: 8192
+  securityContext:
+    privileged: true
+
+initFs:
+  enabled: true
+  securityContext:
+    privileged: true
+
+prometheusExporter:
+  enabled: false
+  version: "0.16.0"
+  noCheckCertificate: false
+  webBeanPort: 8000
+  ceBeanPort: 8001
+  config:
+    rules:
+      - pattern: ".*"
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+
+prometheusMonitoring:
+  podMonitor:
+    enabled: false
+    namespace: "default"
+    interval: 30s
+
+plugins:
+  install:
+    - https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.14.0/sonarqube-community-branch-plugin-1.14.0.jar
+  lib:
+    - sonarqube-community-branch-plugin-1.14.0.jar
+  jvmOpts: "/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=web"
+  jvmCeOpts: "/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=ce"
+
+  # jvmOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.14.0.jar/sonarqube-community-branch-plugin-1.14.0.jar=web"
+  # jvmCeOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.14.0.jar/sonarqube-community-branch-plugin-1.14.0.jar=ce"
+
+  # to make the multi-branch plugin work:
+  #   JAR is placed in extensions/plugins and lib/common.
+  #   JAR has 744 permissions. I had dedicated user and group to run sonarqub
+
+  # jvmOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=web"
+  # jvmCeOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=ce"
+
+  # Set to true to not validate the server's certificate to download plugin
+  noCheckCertificate: false
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+
+## Values to add to SONARQUBE_WEB_JVM_OPTS
+##
+# jvmOpts: "-Djava.net.preferIPv4Stack=true"
+jvmOpts: ""
+
+## Values to add to SONAR_CE_JAVAOPTS
+jvmCeOpts: ""
+
+monitoringPasscode: "define_it"
+
+# Set annotations for pods
+annotations: {}
+
+resources:
+  limits:
+    cpu: 800m
+    memory: 4Gi
+  requests:
+    cpu: 400m
+    memory: 2Gi
+
+persistence:
+  enabled: true
+  annotations: {}
+  storageClass:
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  uid: 1000
+  volumes: []
+  mounts: []
+
+emptyDir: {}
+
+jdbcOverwrite:
+  enable: false
+  jdbcUrl: "jdbc:postgresql://myPostgress/myDatabase?socketTimeout=1500"
+  jdbcUsername: "sonarUser"
+  jdbcPassword: "sonarPass"
+
+## Configuration values for postgresql dependency
+## ref: https://github.com/bitnami/charts/blob/master/bitnami/postgresql/README.md
+postgresql:
+  enabled: true
+  postgresqlUsername: "sonaruser"
+  postgresqlPassword: "sonarpass"
+  postgresqlDatabase: "sonardb"
+  service:
+    port: 5432
+  resources:
+    limits:
+      cpu: 2
+      memory: 4Gi
+    requests:
+      cpu: 100m
+      memory: 400Mi
+  persistence:
+    enabled: false
+    accessMode: ReadWriteOnce
+    size: 20Gi
+    storageClass:
+  securityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+  volumePermissions:
+    enabled: false
+    securityContext:
+      runAsUser: 0
+  shmVolume:
+    chmod:
+      enabled: false
+  serviceAccount:
+    enabled: false
+
+podLabels: {}
+
+sonarqubeFolder: /opt/sonarqube
+
+tests:
+  image: bitnami/minideb-extras
+  enabled: true
+  resources: {}
+  initContainers:
+    image: bats/bats:1.2.1
+    resources: {}
+
+serviceAccount:
+  create: false
+  annotations: {}
+
+extraConfig:
+  secrets: []
+  configmaps: []
+
+terminationGracePeriodSeconds: 60

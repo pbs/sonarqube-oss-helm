@@ -19,15 +19,15 @@ deploymentStrategy: {}
 # schedulerName:
 
 ## Is this deployment for OpenShift? If so, we help with SCCs
-OpenShift:
-  enabled: false
-  createSCC: true
+# OpenShift:
+#   enabled: false
+#   createSCC: true
 
 edition: "community"
 
 image:
   repository: sonarqube
-  tag: 9.7.1-{{ .Values.edition }}
+  tag: 9.9.0-{{ .Values.edition }}
   pullPolicy: IfNotPresent
   # If using a private repository, the imagePullSecrets to use
   # pullSecrets:
@@ -92,7 +92,7 @@ ingress:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   # This property allows for reports up to a certain size to be uploaded to SonarQube
-  # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+  # nginx.ingress.kubernetes.io/proxy-body-size: "24m"
 
   # Set ingressClassName if kubernetes version is >= 1.18
   # Reference: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
@@ -259,6 +259,21 @@ prometheusExporter:
     runAsUser: 1000
     runAsGroup: 1000
 
+prometheusMonitoring:
+  # Generate a Prometheus Pod Monitor (https://github.com/coreos/prometheus-operator)
+  #
+  podMonitor:
+    # Create PodMonitor Resource for Prometheus scraping
+    enabled: false
+    # Specify a custom namespace where the PodMonitor will be created
+    namespace: "default"
+    # Specify the interval how often metrics should be scraped
+    interval: 30s
+    # Specify the timeout after a scrape is ended
+    # scrapeTimeout: ""
+    # Name of the label on target services that prometheus uses as job name
+    # jobLabel: ""
+
 # List of plugins to install.
 # For example:
 # plugins:
@@ -269,11 +284,18 @@ prometheusExporter:
 plugins:
   # install: []
   install:
-    - https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.12.0/sonarqube-community-branch-plugin-1.12.0.jar
+    - https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.14.0/sonarqube-community-branch-plugin-1.14.0.jar
   lib:
-    - sonarqube-community-branch-plugin-1.12.0.jar
-  jvmOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-${version}.jar/sonarqube-community-branch-plugin-${version}.jar=web"
-  jvmCeOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-${version}.jar/sonarqube-community-branch-plugin-${version}.jar=ce"
+    - sonarqube-community-branch-plugin-1.14.0.jar
+  jvmOpts: "/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=web"
+  jvmCeOpts: "/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=ce"
+
+  # jvmOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.14.0.jar/sonarqube-community-branch-plugin-1.14.0.jar=web"
+  # jvmCeOpts: "/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.14.0.jar/sonarqube-community-branch-plugin-1.14.0.jar=ce"
+
+  # to make the multi-branch plugin work:
+  #   JAR is placed in extensions/plugins and lib/common.
+  #   JAR has 744 permissions. I had dedicated user and group to run sonarqub
 
   # jvmOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=web"
   # jvmCeOpts: "-javaagent:/opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.12.0.jar=ce"
@@ -350,7 +372,7 @@ persistence:
   ##
   storageClass:
   accessMode: ReadWriteOnce
-  size: 5Gi
+  size: 10Gi
   uid: 1000
 
   ## Specify extra volumes. Refer to ".spec.volumes" specification : https://kubernetes.io/fr/docs/concepts/storage/volumes/
@@ -425,10 +447,10 @@ postgresql:
   resources:
     limits:
       cpu: 2
-      memory: 2Gi
+      memory: 4Gi
     requests:
       cpu: 100m
-      memory: 200Mi
+      memory: 400Mi
   persistence:
     enabled: false
     accessMode: ReadWriteOnce

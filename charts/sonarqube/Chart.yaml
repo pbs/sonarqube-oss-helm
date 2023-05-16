@@ -2,15 +2,15 @@ apiVersion: v2
 name: sonarqube
 description: SonarQube offers Code Quality and Code Security analysis for up to 27 languages. Find Bugs, Vulnerabilities, Security Hotspots and Code Smells throughout your workflow.
 type: application
-version: 6.2.0
-appVersion: 9.7.1
+version: 9.4.0
+appVersion: 9.9.0
 keywords:
   - coverage
   - security
   - code
   - quality
 home: https://www.sonarqube.org/
-icon: https://www.sonarqube.org/assets/logo-31ad3115b1b4b120f3d1efd63e6b13ac9f1f89437f0cf6881cc4d8b5603a52b4.svg
+icon: https://raw.githubusercontent.com/SonarSource/sonarqube-static-resources/master/helm/SonarQubeLogo.svg
 sources:
   - https://github.com/SonarSource/docker-sonarqube
   - https://github.com/SonarSource/sonarqube
@@ -18,6 +18,10 @@ kubeVersion: '>= 1.19.0-0'
 maintainers:
   - name: leo-geoffroy-sonarsource
     email: leo.geoffroy+helm@sonarsource.com
+  - name: carminevassallo
+    email: carmine.vassallo@sonarsource.com
+  - name: jCOTINEAU
+    email: jeremy.cotineau@sonarsource.com
 annotations:
   artifacthub.io/links: |
     - name: support
@@ -25,42 +29,35 @@ annotations:
     - name: Chart Source
       url: https://github.com/SonarSource/helm-chart-sonarqube/tree/master/charts/sonarqube
   artifacthub.io/changes: |
-    - kind: changed
-      description: "Updated SonarQube to 9.7.1"
-    - kind: changed
-      description: "Updated SonarQube to 9.7.0"
-    - kind: fixed
-      description: "Fix the right-dash curly brace issue with the additional network policy parameter"
     - kind: added
-      description: "Allow `tests.image` to be configured and update README accordingly"
-    - kind: added
-      description: "Allow `tests.initContainers.image` to be configured and update README accordingly"
+      description: "Support for extraVolumes and extraVolumeMounts in sonar pods"
     - kind: changed
-      description: "Use the networkPolicy.prometheusNamespace value for the network policy namespace selector"
+      description: "Clarify doc for custom cacert secret"
     - kind: changed
-      description: "Uncomment default value in values.yaml for backwards compatibility"
+      description: "Refactor Deployment manifest to match the Statefulset manifest"
     - kind: added
-      description: "Add support for monitoringPasscode passed as a secret and removal of livenessprobe httpheader defined in clear text"
+      description: "Add a configurable Prometheus PodMonitor resource"
     - kind: changed
-      description: "Bump apiVersion to v2"
+      description: "Prometheus exporter updated to 0.17.2"
     - kind: changed
-      description: "Set the number of allowed replicas to 0 and 1"
-    - kind: added
-      description: "Add documentation for ingress tls"
-    - kind: added
-      description: "Add documentation for sonarProperties and sonarSecretProperties"
-    - kind: added
-      description: "Add the possibility of using a secret for customizing the admin password"
+      description: "Allow setting priorityClassName for StatefulSets"
+    - kind: changed
+      description: "Adds timeoutSeconds parameter to probes"
+    - kind: changed
+      description: "Update SonarQube logo"
+    - kind: changed
+      description: "Bootstrap chart version 9.x.x dedicated to the future SonarQube 10.0"
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/images: |
     - name: sonarqube
-      image: sonarqube:9.7.1-community
+      image: sonarqube:9.9.0-community
 dependencies:
   - name: postgresql
     version: 10.15.0
-    repository: https://charts.bitnami.com/bitnami
+    repository: https://raw.githubusercontent.com/bitnami/charts/pre-2022/bitnami
     condition: postgresql.enabled
   - name: ingress-nginx
     version: 4.0.13
     repository: https://kubernetes.github.io/ingress-nginx
     condition: nginx.enabled
+    
